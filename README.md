@@ -1,153 +1,222 @@
-# 📊 Final Project — Reported Crime (STARS Category Offenses) after 2024-06-03  
-**Course:** IT2053C  
-**Author:** Silas Curry  
+
+# 📊 Cincinnati Police STARS Dataset — Final Project Notebook  
+### 🧠 Reported Crime (STARS Category Offenses) After 2024‑06‑03  
+**Dataset:** *Reported Crime (STARS Category Offenses) on or after 6/3/2024*  
+**Source:** City of Cincinnati Open Data Portal  
+
+**IT2053C – Data Tech Programming**  
+**Author: Silas Curry**  
+**University of Cincinnati — School of Information Technology**
 
 ---
 
-## 🧠 Overview  
 
-This repository contains the **final project submission** for IT2053C, analyzing the *City of Cincinnati's "Reported Crime (STARS Category Offenses)"* dataset (records on or after June 3, 2024).  
-The project examines how reported crime varies by **time, category, and neighborhood** following the CPD's transition to a new Records Management System (RMS).  
+## 🔍 Executive Summary
 
-The analysis provides actionable insights for **public safety stakeholders**, including CPD operations, city leadership, and neighborhood councils.
+### Context & Stakeholders
 
----
+The **Cincinnati Police Department (CPD)** adopted a new Records Management System (RMS) on **June 3, 2024**, transitioning all reported incidents to the **STARS (Standardized Tracking and Reporting System)** offense classification model. STARS ensures consistent offense grouping and improved analytical reliability. This dataset represents all reported crime incidents recorded **after the RMS transition**, providing a clean and modern framework for evaluating Cincinnati’s public safety landscape.
 
-## 🗂️ Project Structure  
+Stakeholders who depend on these insights include:
 
-The project consists of **three parts**:
+- **CPD Command Staff & Public Safety Leadership**  
+- **Neighborhood Councils & Community Safety Partners**  
+- **Operational Analysts & Patrol Planners**  
+- **City Administrators & Policy Makers**  
+- **Community Engagement & Crime Prevention Groups**
 
-1. **Initiation (Part 1)** – Dataset selection, research questions, and visualization plan  
-2. **Notebook (Part 2)** – Data loading, cleaning, exploration, visualization, and analysis  
-3. **Presentation (Part 3)** – Executive summary, conclusions, recommendations, and references  
-
-**Primary notebook:**  
-`final-project.ipynb`  
+Understanding temporal, spatial, and categorical patterns in reported crime is essential for optimizing citywide resource allocation, ensuring equitable service delivery, and guiding long-term policy and prevention strategies.
 
 ---
 
-## 🚀 Quick Start  
+### Goal of This Project
 
-### 1. Environment Setup  
+This project performs a full analytical workflow examining **spatial and temporal patterns** in citywide crime incidents following the RMS transition. Focus areas include:
 
-If you haven't already created the environment for previous assignments, run:  
-```bash
-# Replace <your_6+2_username> with your UC username
-python scripts/setup.py --username <your_6+2_username>
+- Identifying **peak times** for crime (hour of day, day of week)  
+- Determining **high-frequency offense categories** and monthly shifts  
+- Highlighting major **neighborhood hotspots**  
+- Understanding **clearance outcomes** and their operational implications  
+
+This project aims to provide insights that support:
+
+- Evidence-based patrol staffing  
+- Targeted community safety interventions  
+- Public‑facing dashboards and reporting tools  
+- Data governance decisions for merging pre‑ and post‑transition datasets  
+
+---
+
+## ⭐ Key Findings (Preview)
+
+### Temporal Patterns
+- Crime is heavily concentrated between **11:00 and 18:00**.  
+- **Mondays** show significantly higher average daily incident counts than other weekdays.
+
+### Category Concentration
+- A small set of offense types—**Part 2 Offenses**, **Theft**, **Auto Theft**, **Burglary/Break‑ins**—account for a substantial share of total activity.  
+- **Part 2 Offenses** represent a major portion of community‑facing incidents.
+
+### Geographic Patterns
+- Consistent hotspots include **Westwood**, **CBD/Riverfront**, **Over‑the‑Rhine**, and **West Price Hill**.  
+- Crime levels vary sharply between neighborhoods, supporting the need for localized strategies.
+
+### Clearance & Operational Patterns
+- Many incidents close under **administrative categories** such as “Early Closed” or “Cleared by Arrest (Adult).”  
+- A notable portion close as **“Victim Refuses to Cooperate”** or **“Unfounded,”** suggesting engagement or trust challenges.
+
+---
+
+## 🎯 Recommendations (Preview)
+
+- Increase **patrol presence** during the 11:00–18:00 window, especially Mondays.  
+- Prioritize **property‐crime prevention** in consistently high‑activity neighborhoods.  
+- Develop a **neighborhood‑level weekly dashboard** for CPD and community partners.  
+- Integrate this dataset with **calls for service, arrest data, and demographic/contextual layers**.  
+- Maintain strict **data governance** for RMS transition boundaries.
+
+---
+
+# 📂 Data Card
+
+## Dataset Origin
+- **Publisher:** Cincinnati Police Department  
+- **Source:** City of Cincinnati Open Data Portal  
+- **Granularity:** Each row represents one reported offense  
+- **Timespan:** 2024‑06‑03 onward (post‑RMS implementation)
+
+## Key Fields
+- `STARS_Category` — standardized offense type  
+- `CLSD` / `CLSD_pretty` — mapped closure/clearance outcomes  
+- `date`, `month`, `DAY_OF_WEEK` — derived temporal features  
+- `Hour_From`, `Hour_To` — start/end of incident time window  
+
+## Limitations
+- Some offense classifications contain missing or ambiguous entries  
+- Reported crime ≠ all crime  
+- Open data may lag or be updated retroactively  
+
+## License
+Public dataset, released under Cincinnati open-data licensing.
+
+---
+
+# 📥 Loading & File I/O
+
+All loading uses a safe, typed helper function with explicit error handling:
+
+```python
+from pathlib import Path
+import pandas as pd
+
+def load_csv(path: Path) -> pd.DataFrame:
+    """Load a CSV with explicit error handling."""
+    try:
+        df = pd.read_csv(path)
+    except FileNotFoundError as e:
+        raise FileNotFoundError(
+            f"Could not find {path.name}. Check the data/ folder."
+        ) from e
+    except pd.errors.ParserError as e:
+        raise ValueError(
+            f"Parsing failed for {path.name}. Check delimiter or problematic rows."
+        ) from e
+    else:
+        return df
 ```
 
-**Example:**
-```bash
-python scripts/setup.py --username currysc
-```
-
-Then activate the environment:
-```bash
-conda activate IT2053C
-```
+If the dataset is missing, a small fallback sample is used so the notebook still runs structurally.
 
 ---
 
-### 2. Run the Notebook
+# 🔍 Exploratory Data Analysis (EDA)
 
-Open **`final-project.ipynb`** and run all cells sequentially.
+### Preparation Tasks
+- Standardize column names  
+- Parse dates via `pd.to_datetime(errors="coerce")`  
+- Create derived time variables (`month`, `DAY_OF_WEEK`)  
+- Map closure codes to readable categories  
+- Validate required fields using sets  
+- Apply vectorized pandas operations  
 
-The notebook will automatically detect the dataset:
+### Descriptive Highlights
+- Daily incident distribution analysis  
+- Category frequency breakdowns  
+- Weekly/hourly temporal patterns  
+- Missingness and data-type auditing  
 
-* Expected path: `data/Reported_STARS_Category_Offenses.csv`
-* If not found, it will load a **6-row sample dataset** to allow the notebook to run end-to-end for demonstration.
+### Visualizations Included
+- Histogram (distribution)  
+- Boxplot (group comparison)  
+- Scatter with regression line (numeric relationship)  
+- Time‑series line plot (monthly category trends)  
+- Multi‑panel facet grid  
+- Interactive Plotly visualization  
 
----
-
-## 📈 Project Contents
-
-### 🔹 Executive Summary
-
-* Defines context, goals, and key findings for Cincinnati's post-transition crime data.
-* Identifies **temporal patterns**, **offense category concentration**, and **neighborhood hotspots**.
-* Provides actionable recommendations for patrol planning and data governance.
-
-### 🔹 Dataset Selection
-
-* **Source:** [City of Cincinnati Open Data Portal – STARS Category Offenses (after 6/3/2024)](https://data.cincinnati-oh.gov/safety/Reported-Crime-STARS-Category-Offenses-on-or-after/7aqy-xrv9/about_data)
-* **Size:** ≈ 37,900 rows × 17 columns (as of Nov 12 2025)
-* **License:** Public data with block-level anonymization and randomized coordinates
-* **Reason for selection:** Timely, locally relevant, updated daily, and actionable for safety decision-making.
-
-### 🔹 Analysis & Visualization
-
-The notebook includes **8 static visualizations + 2 interactive charts** (Plotly).
-Each chart is paired with an actionable **stakeholder takeaway**.
-
-Visuals include:
-
-* Incidents by **day of week**
-* Incidents by **hour**
-* **Day × Hour** heatmap
-* Top **STARS offense categories**
-* Top **neighborhoods** by incident volume
-* **Weekly trendline** of reported incidents
-* **Clearance status** distribution
-* **Correlation matrix** for numeric features
-* **Interactive map** (spatial distribution)
-* **Interactive dropdown chart** (monthly trend by offense type)
-
-### 🔹 Conclusions
-
-Summarizes key insights and operational implications:
-
-* Peak incidents occur **11 AM–6 PM**, especially **Mondays**.
-* Property-related crimes dominate, led by **Part 2 offenses** and **thefts**.
-* High-activity neighborhoods include **Westwood, CBD/Riverfront, Over-the-Rhine, West Price Hill**.
-* Clearance data show quick resolution rates but highlight cooperation gaps.
-* Findings support **time-targeted patrols** and **neighborhood-focused outreach**.
-
-### 🔹 Limitations
-
-* **Geolocation randomized** to block level (cannot use for address-specific mapping).
-* Dataset **excludes** arrests, service calls, or outcomes.
-* RMS transition (June 3 2024) may affect cross-year comparison; harmonization required before merging older data.
+All visualizations include narrative justification and result interpretation.
 
 ---
 
-## 📚 References & Resources
+# 📈 Statistical Insights
 
-* **City of Cincinnati Open Data Portal:**
-  [Reported Crime (STARS Category Offenses) after 6/3/2024](https://data.cincinnati-oh.gov/safety/Reported-Crime-STARS-Category-Offenses-on-or-after/7aqy-xrv9/about_data)
-* **Historical Dataset (before 6/3/2024):**
-  [Reported Crime (STARS Category Offenses) before 6/3/2024](https://data.cincinnati-oh.gov/safety/Reported-Crime-STARS-Category-Offenses-before-6-3-/8xzn-kpn7/about_data)
-* **CincyInsights Dashboard:**
-  [CincyInsights — Public Safety Overview](https://insights.cincinnati-oh.gov/stories/s/8eaa-xrvz)
-* **City Data Usage Guide:**
-  [Open Data How-To Guide](https://data.cincinnati-oh.gov/dataset/Open-Data-How-To-Guide/gdr9-g3ad)
-* **Related Agencies:**
-  * [Cincinnati Police Department (CPD)](https://www.cincinnati-oh.gov/police/)
-  * [Office of Performance & Data Analytics (OPDA)](https://performance.cincinnati-oh.gov/)
-  * [FBI UCR Program](https://www.fbi.gov/services/cjis/ucr)
-  * [National Incident-Based Reporting System (NIBRS)](https://nibrs.fbi.gov)
-  * [U.S. Bureau of Justice Statistics (BJS)](https://bjs.ojp.gov/)
+This project includes the required statistical insights:
+
+- Distribution characterization with summary statistics  
+- Group comparison via appropriate tests  
+- Categorical association analysis  
+- Numeric correlation with confidence intervals  
+- Additional insights on neighborhood and category trends  
 
 ---
 
-## 🧩 Submission Instructions
+# 🧠 Conclusions
 
-1. Push your completed notebook and data file to your **GitHub Classroom repository**.
-2. Ensure the repository contains:
-   * `final-project.ipynb`
-   * `data/Reported_STARS_Category_Offenses.csv`
-   * This `README.md`
-3. Submit your GitHub repository URL to **Canvas**.
+Key conclusions from the analysis include:
 
-The instructor will review your dataset choice, questions, and visualizations, then provide feedback or approval.
-Once approved, proceed with refinement for final grading.
+- **Daily incident volume is stable and predictable**, enabling reliable planning.  
+- **Mondays produce higher incident activity**, suggesting early‑week resource alignment.  
+- **High‑activity neighborhoods** exhibit persistent patterns requiring localized strategies.  
+- **Incident timing relationships** reflect strong internal consistency in reporting.  
+- **Clearance patterns** highlight operational efficiency and points for procedural improvement.
 
 ---
 
-**✅ Project Deliverables:**
+# 📚 Appendix
 
-* [x] Initiation — dataset, rationale, and visualization plan
-* [x] Notebook — analysis, visuals, and stakeholder takeaways
-* [x] Presentation — summary, conclusions, and references
+### References
+- Cincinnati Open Data Portal  
+- pandas, NumPy, seaborn, matplotlib, Plotly documentation  
+- Statistical method references  
 
-**🎯 Goal:**
-Demonstrate practical data analysis and visualization skills through a **real-world public safety dataset** that informs decision-making and supports evidence-based community outcomes.
+---
+
+# ✅ Assignment Requirements Checklist
+
+## Notebook Structure
+- Executive summary, data card, EDA, conclusions, appendix ✓  
+- Clear narrative connecting code and interpretation ✓  
+
+## Technical Requirements
+- Functions with type hints & docstrings ✓  
+- Proper use of lists, tuples, sets, dicts ✓  
+- Vectorized operations ✓  
+- `groupby`, merges, tidy reshaping ✓  
+
+## File & Exception Handling
+- Reads from `data/` directory ✓  
+- Handles `FileNotFoundError` and `ParserError` ✓  
+
+## Visualization Requirements
+- ≥6 visualizations, including all required types ✓  
+- Interactive Plotly figure embedded ✓  
+
+## Statistical Requirements
+- Distribution characterization ✓  
+- Group comparison ✓  
+- Categorical association ✓  
+- Numeric correlation ✓  
+- Additional insight ✓  
+
+---
+
+IT2053C – Data Tech Programming requirements at the **University of Cincinnati, School of Information Technology**.
